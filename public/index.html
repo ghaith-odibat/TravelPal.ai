@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TravelPal.ai</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">✈️ TravelPal<span>.ai</span></div>
+      <button id="new-chat" class="ghost" type="button">New chat</button>
+    </header>
+
+    <main id="messages" class="messages" aria-live="polite">
+      <div id="welcome" class="welcome">
+        <h1>Where to next?</h1>
+        <p>Ask me to plan an itinerary, compare destinations, or help you pack.</p>
+        <div class="suggestions">
+          <button type="button">Plan 4 days in Lisbon on a mid-range budget</button>
+          <button type="button">Best places for a beach trip in March?</button>
+          <button type="button">What should I pack for a week in Iceland?</button>
+        </div>
+      </div>
+    </main>
+
+    <form id="composer" class="composer">
+      <textarea id="input" rows="1" placeholder="Ask TravelPal anything about your trip…" autocomplete="off" required></textarea>
+      <button id="send" type="submit" aria-label="Send">Send</button>
+    </form>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
