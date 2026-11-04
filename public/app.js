@@ -5,6 +5,9 @@ const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 const newChatBtn = document.getElementById("new-chat");
 
+const API_BASE = (window.TRAVELPAL_API_BASE || "").replace(/\/+$/, "");
+const IS_STATIC_HOST = location.hostname.endsWith("github.io");
+
 /** Conversation history sent to the server: [{ role, content }] */
 let history = [];
 let controller = null;
@@ -42,7 +45,10 @@ async function sendMessage(text) {
   controller = new AbortController();
 
   try {
-    const res = await fetch("/api/chat", {
+    if (!API_BASE && IS_STATIC_HOST) {
+      throw new Error("This page has no chat backend set up yet. Set the TRAVELPAL_API_BASE repository variable and redeploy.");
+    }
+    const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: history }),

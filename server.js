@@ -23,9 +23,17 @@ const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 20; // requests per
 const RATE_LIMIT_WINDOW_MS = (Number(process.env.RATE_LIMIT_WINDOW_MINUTES) || 60) * 60 * 1000;
 const MAX_MESSAGE_CHARS = 4000;
 
+// Other sites allowed to call the API, e.g. the GitHub Pages URL.
+// Comma-separated; "*" allows any origin.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
 const app = express();
 // Hosts like Render sit behind a proxy; trust it so req.ip is the visitor's IP.
 app.set("trust proxy", 1);
+app.use(cors);
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(here, "public")));
 
@@ -99,6 +107,19 @@ app.post("/api/chat", rateLimit, async (req, res) => {
     res.end();
   }
 });
+
+function cors(req, res, next) {
+  const origin = req.headers.origin;
+  if (origin && (ALLOWED_ORIGINS.includes("*") || ALLOWED_ORIGINS.includes(origin))) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Max-Age", "86400");
+  }
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+}
 
 function sanitizeMessages(input) {
   if (!Array.isArray(input) || input.length === 0) return null;

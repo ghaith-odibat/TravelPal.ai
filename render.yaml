@@ -14,3 +14,5 @@ services:
         value: "20"
       - key: RATE_LIMIT_WINDOW_MINUTES
         value: "60"
+      - key: ALLOWED_ORIGINS
+        value: https://ghaith-odibat.github.io # GitHub Pages site allowed to call the API

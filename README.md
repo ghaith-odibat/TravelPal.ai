@@ -39,3 +39,17 @@ Notes:
   visitor is limited to `RATE_LIMIT_MAX` messages per `RATE_LIMIT_WINDOW_MINUTES`
   (default 20 per hour), and messages are capped at 4,000 characters. Adjust the
   env vars in Render, and consider setting a spend limit in the Anthropic Console.
+
+## GitHub Pages (frontend only)
+
+GitHub Pages can host the chat page but not the server, so the page on Pages talks to
+the Render backend above. `.github/workflows/pages.yml` publishes `public/` whenever it
+changes on the default branch.
+
+1. Deploy the backend on Render (above) and note its URL. `ALLOWED_ORIGINS` is preset
+   to `https://ghaith-odibat.github.io` so the Pages site may call it.
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+3. **Settings → Secrets and variables → Actions → Variables → New repository variable**:
+   `TRAVELPAL_API_BASE` = your Render URL, e.g. `https://travelpal-ai.onrender.com`.
+4. **Actions → Deploy to GitHub Pages → Run workflow** (or push a change to `public/`).
+   The site is served at `https://ghaith-odibat.github.io/TravelPal.ai/`.

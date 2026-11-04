@@ -1,0 +1,45 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    paths:
+      - "public/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Only publish from the repository's default branch.
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Point the page at the chat backend
+        env:
+          API_BASE: ${{ vars.TRAVELPAL_API_BASE }}
+        run: |
+          if [ -z "$API_BASE" ]; then
+            echo "::warning::TRAVELPAL_API_BASE is not set; the chat will show a setup message until it is."
+          fi
+          printf 'window.TRAVELPAL_API_BASE = %s;\n' "$(jq -Rn --arg v "$API_BASE" '$v')" > public/config.js
+          cat public/config.js
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - id: deployment
+        uses: actions/deploy-pages@v4
