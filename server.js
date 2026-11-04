@@ -18,15 +18,44 @@ and suggest the user verify details like visas, opening hours, and fares.`;
 // Resolves credentials from ANTHROPIC_API_KEY (or another configured source).
 const client = new Anthropic();
 
+// Limits that keep a public deployment from running up the API bill.
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 20; // requests per window per IP
+const RATE_LIMIT_WINDOW_MS = (Number(process.env.RATE_LIMIT_WINDOW_MINUTES) || 60) * 60 * 1000;
+const MAX_MESSAGE_CHARS = 4000;
+
 const app = express();
+// Hosts like Render sit behind a proxy; trust it so req.ip is the visitor's IP.
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(here, "public")));
+
+app.get("/healthz", (_req, res) => res.send("ok"));
+
+const hits = new Map(); // ip -> { count, resetAt }
+function rateLimit(req, res, next) {
+  const now = Date.now();
+  let entry = hits.get(req.ip);
+  if (!entry || entry.resetAt <= now) {
+    entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+    hits.set(req.ip, entry);
+  }
+  entry.count += 1;
+  if (entry.count > RATE_LIMIT_MAX) {
+    const minutes = Math.ceil((entry.resetAt - now) / 60000);
+    return res.status(429).json({ error: `You've reached the message limit. Try again in ${minutes} min.` });
+  }
+  next();
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of hits) if (entry.resetAt <= now) hits.delete(ip);
+}, 10 * 60 * 1000).unref();
 
 // Streams the assistant reply as newline-delimited JSON events:
 //   {"type":"text","text":"..."}   a chunk of reply text
 //   {"type":"done"}                reply finished
 //   {"type":"error","message":"..."}
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", rateLimit, async (req, res) => {
   const messages = sanitizeMessages(req.body?.messages);
   if (!messages) {
     return res.status(400).json({ error: "Expected a non-empty messages array ending with a user message." });
@@ -75,8 +104,10 @@ function sanitizeMessages(input) {
   if (!Array.isArray(input) || input.length === 0) return null;
   const messages = input
     .filter((m) => (m?.role === "user" || m?.role === "assistant") && typeof m.content === "string" && m.content.trim())
-    .slice(-50)
-    .map((m) => ({ role: m.role, content: m.content }));
+    .slice(-30)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE_CHARS) }));
+  // The API expects the conversation to start with a user turn.
+  while (messages.length && messages[0].role !== "user") messages.shift();
   if (messages.length === 0 || messages.at(-1).role !== "user") return null;
   return messages;
 }
